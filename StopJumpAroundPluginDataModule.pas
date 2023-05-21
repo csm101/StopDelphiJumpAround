@@ -62,11 +62,10 @@ end;
 
 procedure TMainPlugin.CustomWndProc(var Message: TMessage);
 
-
-   function IsWindowsPosChangingMessageToBeHandled:boolean;
+   function IsWindowsPosChangingMessageToBeStopped:boolean;
    begin
      result := false;
-     if message.Msg <>WM_WINDOWPOSCHANGING then exit;
+     if IsIconic(Application.MainForm.Handle) then exit;
      if (GetKeyState(VK_LWIN)<0)  or (GetKeyState(VK_LBUTTON) < 0) then begin
         // if I am allowing the movement because user is using the mouse or using windows+left/right/top/bottom shortcuts
         // i allow subsequents moves for a couple of seconds in order to allow the movements caused by "window snapping"
@@ -86,10 +85,27 @@ procedure TMainPlugin.CustomWndProc(var Message: TMessage);
    end;
 
 begin
-  if IsWindowsPosChangingMessageToBeHandled  then
-    WindowPosChanging(TWMWindowPosChanging(Message))
-  else
-    FOrigWndProc(message);
+  case  message.Msg of
+    WM_WINDOWPOSCHANGING:
+      if IsWindowsPosChangingMessageToBeStopped then begin
+        WindowPosChanging(TWMWindowPosChanging(Message));
+        exit;
+      end;
+    WM_SYSCOMMAND:
+      begin
+        var cmd := message.WParam;
+        if (cmd = SC_MINIMIZE) or (cmd = SC_MAXIMIZE) or (cmd = SC_RESTORE) then
+          FLastAllowedWindowChangingTimestamp := now;
+      end;
+    WM_NCLBUTTONDOWN:
+      begin
+         var hit := Message.WParam;
+         if (hit = HTMAXBUTTON) or (hit = HTMINBUTTON) or (hit = HTCAPTION) then
+          FLastAllowedWindowChangingTimestamp := now;
+      end;
+  end;
+
+  FOrigWndProc(message);
 end;
 
 var thePlugin:TMainPlugin =nil;
