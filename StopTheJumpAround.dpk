@@ -25,6 +25,8 @@ package StopTheJumpAround;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Stop Delphi from Jumping Around the Screen'}
+{$DESIGNONLY}
 {$IMPLICITBUILD ON}
 
 requires
