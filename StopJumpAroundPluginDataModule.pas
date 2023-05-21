@@ -6,23 +6,16 @@ uses
   ToolsAPI, VCL.Menus, VCL.ActnList,VCL.Forms,Winapi.Messages,   Vcl.Dialogs,
   Winapi.Windows, System.SysUtils, System.Classes, Winapi.ActiveX, System.TypInfo, DockForm, DesignIntf,
   Vcl.Graphics, Vcl.ImgList, Vcl.Controls, Vcl.ComCtrls, Vcl.Themes, Xml.XMLIntf, System.IniFiles,
-  System.Types, PersonalityConst, System.ImageList, Vcl.AppEvnts;
+  System.Types, PersonalityConst, System.ImageList, Vcl.AppEvnts, Vcl.ExtCtrls;
 
 type
   TMainPlugin = class(TDataModule)
-    images: TImageList;
+    SubclassTimer: TTimer;
+    procedure SubclassTimerTimer(Sender: TObject);
   private
-    LockWindowPosition: boolean;
-    button : TToolButton;
-    imagesStartIndex:integer;
-
     FOrigWndProc: TWndMethod;
     FSubclassed: Boolean;
     FLastAllowedWindowChangingTimestamp:TDateTime;
-
-    procedure CreateToolBar;
-    procedure UpdateButton;
-    procedure ToolbarButtonClick(sender:TObject);
 
     procedure SubclassMainForm;
     procedure UnsubclassMainForm;
@@ -31,9 +24,6 @@ type
   public
     destructor Destroy; override;
   end;
-
-var
-  MainPlugin: TMainPlugin;
 
 implementation
 
@@ -64,63 +54,11 @@ begin
   FSubclassed := False;
 end;
 
-
-procedure TMainPlugin.ToolbarButtonClick(sender:TObject);
-begin
-  LockWindowPosition := not LockWindowPosition;
-
-  if LockWindowPosition then
-    SubclassMainForm
-  else
-    UnsubclassMainForm;
-
-  UpdateButton;
-end;
-
-procedure TMainPlugin.UpdateButton;
-begin
-  if LockWindowPosition then begin
-    button.Hint := 'IDE will stay put where you placed it';
-    button.ImageIndex := imagesStartIndex+1;
-  end else begin
-    button.Hint := 'IDE will jump around whenever you start/stop the debugger';
-    button.ImageIndex := imagesStartIndex;
-  end;
-end;
-
-
-procedure TMainPlugin.CreateToolBar;
-var NTAServices:INTAServices;
-begin
-  if not Supports(BorlandIDEServices, INTAServices, NTAServices) then begin
-    exit;
-  end;
-  imagesStartIndex  := NTAServices.addImages(images);
-
-  //toolbar := NTAServices.NewToolbar('Digisoft','Digisoft');
-  var toolbar := NTAServices.GetToolbar(sViewToolBar);
-  button := TToolButton.Create(toolbar);
-  button.parent := toolbar;
-  button.ImageIndex := imagesStartIndex;
-  button.OnClick := ToolbarButtonClick;
-  button.visible := true;
-  button.ShowHint := true;
-  updatebutton;
-end;
-
-
-var thePlugin:TMainPlugin = nil;
-
 destructor TMainPlugin.Destroy;
 begin
   UnsubclassMainForm;
-  if button<>nil then begin
-    button.parent := nil;
-    button.free;
-  end;
   inherited;
 end;
-
 
 procedure TMainPlugin.CustomWndProc(var Message: TMessage);
 
@@ -154,9 +92,17 @@ begin
     FOrigWndProc(message);
 end;
 
+var thePlugin:TMainPlugin =nil;
+procedure TMainPlugin.SubclassTimerTimer(Sender: TObject);
+begin
+   // i try multiple times until the main form has been created
+   SubclassMainForm;
+   if FSubclassed then
+     SubclassTimer.Enabled:=false;
+end;
+
 initialization
   thePlugin:= TMainPlugin.create(nil);
-  thePlugin.CreateToolbar;
 finalization
 
   FreeAndNil(thePlugin);
