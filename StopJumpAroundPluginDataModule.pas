@@ -66,6 +66,9 @@ procedure TMainPlugin.CustomWndProc(var Message: TMessage);
    begin
      result := false;
      if IsIconic(Application.MainForm.Handle) then exit;
+     // workaround for when the window gets frozen and invisible with its "iconized" size, even if it isn't iconic anymore
+     if Application.MainForm.Width<200 then exit;  
+     if Application.MainForm.Height<200 then exit;
      if (GetKeyState(VK_LWIN)<0)  or (GetKeyState(VK_LBUTTON) < 0) then begin
         // if I am allowing the movement because user is using the mouse or using windows+left/right/top/bottom shortcuts
         // i allow subsequents moves for a couple of seconds in order to allow the movements caused by "window snapping"
